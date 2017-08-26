@@ -1,0 +1,78 @@
+{% extends "IrrigationSystem/header.html" %}
+
+{% block footer %}
+<script src="/static/js/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-sm-12">
+		{% if endpoint == "windspeedchart" %}
+			<h1>Скорость ветра</h1>
+		{% elif endpoint == "groundhumiditychart" %}
+			<h1>Влажность почвы</h1>
+		{% endif %}
+		</div>
+	</div>
+	<div style="position:absolute; width:500px; height:500px;">
+		<canvas id="Chart" width="50" height="50"></canvas>
+	</div>
+
+{% endblock %}
+
+<script>
+{% block jquery %}
+		var endpoint = "/{{ endpoint }}/";
+		var ctx = document.getElementById("Chart").getContext('2d');
+		$.ajax({
+			method: "GET",
+			url: endpoint,
+			datatype: "jsonp",
+			success: function(data){
+				Set_Chart(data.data_set, data.labels);
+			},
+			error: function(error_data){
+				console.log("error")
+			}
+		});
+
+		function Set_Chart(data_set, labels){
+			var myChart = new Chart(ctx, {
+    		type: 'line',
+    		data: {
+        		labels: labels,
+        		datasets: [{
+            		label: '{{ legend_label }}',
+            		data: data_set,
+                    fill: false,
+            		borderColor: [
+                        {% if endpoint == "windspeedchart" %}
+                		'rgba(153, 102, 255, 1)',
+                        {% elif endpoint == "groundhumiditychart" %}
+                		'rgba(255, 159, 64, 1)'
+                        {% endif %}
+            		],
+            		borderWidth: 1
+        		}]
+    		},
+    		options: {
+        		scales: {
+        			xAxes: [{
+            			ticks: {
+                			fontSize: 10
+            			}
+        			}],
+            		yAxes: [{
+                		ticks: {
+                    		//beginAtZero:true,
+                    		fontSize: 10
+                		}
+            		}]
+        		}
+    		}
+		});
+		}
+		
+{% endblock %}
+</script>
