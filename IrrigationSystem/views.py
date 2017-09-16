@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-15 -*-
+# -*- coding: utf-8 -*-
 
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
@@ -6,11 +6,33 @@ from IrrigationSystem.weather import weatherlib
 from IrrigationSystem.models import Wind, MeasureTime, GroundHumidity, Custom_User
 from ipware.ip import get_ip
 from ipaddress import ip_address
+from django.views.decorators.csrf import csrf_exempt
 import datetime
 import socket
 import json
+import threading
 
-GSM_IP = None
+gsmConnectionEntity = None
+
+class GsmConnection(object):
+	def __init__(self, port):
+		self.port = port
+		self._connection = socket.socket()
+		self._connection.bind(('', port))
+		self._connection.listen(2)
+		self._activeConnection, self.ip_addr = self._connection.accept()
+		self.isConnected = True
+
+	def GetActiveConnection(self):
+		return self._activeConnection
+
+	def CheckConnection(self):
+		while True:
+			data = self._activeConnection.recv(1024)
+			if not data:
+				self.isConnected = False
+				self._activeConnection.close()
+				break
 
 def index(request):
     return render(request, 'IrrigationSystem/home.html', {"class_active" : "index"})
@@ -18,7 +40,7 @@ def index(request):
 
 def contact(request):
     return render(request, 'IrrigationSystem/basic.html',
-                  {'content': [u'Номер мобильного(Moldcell): 079-22-98-87', u'Номер мобильного(Orange): 068-04-72-77', u'Почта: parascan.dima94@gmail.com'], "class_active" : "contact"})
+                  {'content': [r'Номер мобильного(Moldcell): 079-22-98-87', r'Номер мобильного(Orange): 068-04-72-77', u'Почта: parascan.dima94@gmail.com'], "class_active" : "contact"})
 
 def blog(request):
 	return render(request, 'IrrigationSystem/basic.html',
@@ -40,28 +62,35 @@ def SocketSend(request, function):
 	"""
 	Functionality for sending 
 	"""
-	host = '192.168.82.196'
-	port = 12345
-
-	if function == "watering":
-		message = b'Start watering'
-		content = {'content': ['Полив начанётся в течении одной минуты']}
-	elif function == "collectdata":
-		message = b'Start collecting data'
-		content = {'content': ['Сбор данных начанётся в течении одной минуты']}
-
-	s = socket.socket()         # Create a socket object
+	global gsmConnectionEntity
 	try:
-		s.connect((host, port))
-		s.sendall(message)
-		s.close()
+		activeConnection = gsmConnectionEntity.GetActiveConnection()
+
+		if function == "watering":
+			message = b'Start watering'
+			content = {'content': [u'Полив начанётся в течении одной минуты']}
+		elif function == "collectdata":
+			message = b'Start collecting data'
+			content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
+
 	except Exception as e:
-		return render(request, 'IrrigationSystem/basic.html',
-                  {'content': ['Ошибка подключения к системе полива']})
+		return render(request, 'IrrigationSystem/basic.html', {'content': [u'Ошибка подключения к системе полива']})
+
+
+	try:
+		if gsmConnectionEntity.isConnected:
+			activeConnection.sendall(message)
+		else:
+			content = {'content': [u'GSM is not connected']}
+			gsmConnectionEntity = None
+	except:
+		content = {'content': [u'Error occures while sending the message']}
+
 
 	return render(request, 'IrrigationSystem/basic.html', content)
 
 
+@csrf_exempt
 def DataTransfer(request):
 	invalid_key = "Invalid Key"
 	success = "Success"
@@ -90,7 +119,7 @@ def DataTransfer(request):
 	
 
 def WindSpeedChartRender(request):
-	return render(request, 'IrrigationSystem/chart.html', {"endpoint": "windspeedchart", "legend_label": "скорость, м/с"})
+	return render(request, 'IrrigationSystem/chart.html', {"endpoint": "windspeedchart", "legend_label": u"скорость, м/с"})
 
 
 def windspeedchart(request):
@@ -104,7 +133,7 @@ def windspeedchart(request):
 	return JsonResponse(data)
 
 def GroundHumidityChartRender(request):
-	return render(request, 'IrrigationSystem/chart.html', {"endpoint": "groundhumiditychart", "legend_label": "влажность"})
+	return render(request, 'IrrigationSystem/chart.html', {"endpoint": "groundhumiditychart", "legend_label": u"влажность"})
 
 def groundhumiditychart(request):
 	grhum_objects = list(GroundHumidity.objects.all().order_by('date__date'))
@@ -117,10 +146,23 @@ def groundhumiditychart(request):
 	return JsonResponse(data)
 
 def SaveIP(request):
-	global GSM_IP
+	global gsmConnectionEntity
 	ip = get_ip(request)
 	if ip is not None:
-		GSM_IP = ip
+		gsmConnectionEntity = GsmConnection(351)
+		cThread = threading.Thread(target=gsmConnectionEntity.CheckConnection)
+		cThread.daemon = True
+		cThread.start()
 		return HttpResponse("Thanks, is OK")
 	else:
 		return HttpResponse("Oops, something wrong")
+
+def ShowGSMIP(request):
+	global gsmConnectionEntity
+	try:
+		content = {'content':[gsmConnectionEntity.ip_addr[0]]}
+	except:
+		content = {'content':[r'No connection']}
+	finally:
+		return render(request, 'IrrigationSystem/basic.html', content)
+

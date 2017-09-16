@@ -13,4 +13,5 @@ urlpatterns = [
     url(r'^chart/groundhumiditychart/', views.GroundHumidityChartRender, name='GroundHumidityChartRender'),
     url(r'^datatransfer/', views.DataTransfer, name='DataTransfer'),
     url(r'^saveip/', views.SaveIP, name='SaveIP'),
+    url(r'^getip/', views.ShowGSMIP, name='GetIP'),
 ]

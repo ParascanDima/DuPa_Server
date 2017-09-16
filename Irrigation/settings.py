@@ -29,9 +29,9 @@ SECRET_KEY = '-(8^&k%iw_ed^k6qqxwu790ei+jeb8(9#^ww*1#ct#e*m=^1=='
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-local_ip = ip.Get_IP()
+#local_ip = ip.Get_IP()
 
-ALLOWED_HOSTS = [local_ip]
+ALLOWED_HOSTS = ['217.26.174.207']
 #print(local_ip[0])
 
 # Application definition
@@ -113,9 +113,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-RU'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Chisinau'
 
 USE_I18N = True
 
