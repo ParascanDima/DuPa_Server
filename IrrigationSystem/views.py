@@ -12,27 +12,63 @@ import socket
 import json
 import threading
 
-gsmConnectionEntity = None
+
+def TCP_Listner(connectionEntity):
+	s = socket.socket()
+	s.bind(('', connectionEntity.port))
+	s.listen(1)
+	connectionEntity._activeConnection, (connectionEntity._ip_addr, wtf) = s.accept()
+
+	connectionEntity._isConnected = True
+	connectionEntity.checkConnectionThread = threading.Thread(target=gsmConnectionEntity.CheckConnection)
+	connectionEntity.checkConnectionThread.daemon = True
+	connectionEntity.checkConnectionThread.start()
+	connectionEntity.listnerThread = None
+
 
 class GsmConnection(object):
 	def __init__(self, port):
 		self.port = port
-		self._connection = socket.socket()
-		self._connection.bind(('', port))
-		self._connection.listen(2)
-		self._activeConnection, self.ip_addr = self._connection.accept()
-		self.isConnected = True
+		self._activeConnection = None
+		self._ip_addr = None
+		self._isConnected = False
+		self.checkConnectionThread = None
+		self.listnerThread = None
 
 	def GetActiveConnection(self):
 		return self._activeConnection
 
 	def CheckConnection(self):
 		while True:
-			data = self._activeConnection.recv(1024)
-			if not data:
-				self.isConnected = False
-				self._activeConnection.close()
+			if self._activeConnection is not None:
+				try:
+					data = self._activeConnection.recv(1024)
+					if not data:
+						self.CloseActiveConnection()
+
+				except:
+					self.CloseActiveConnection()
+			else:
+				self.CloseActiveConnection()
 				break
+
+	def StartListnerThread(self):
+		self.listnerThread = threading.Thread(target=TCP_Listner, args={self})
+		self.listnerThread.daemon = True
+		self.listnerThread.start()
+
+
+	def StopListnerThread(self):
+		self.listnerThread.stop()
+
+	def CloseActiveConnection(self):
+		self._activeConnection = None
+		self._isConnected = False
+		self._ip_addr = None
+		self.checkConnectionThread = None
+
+gsmConnectionEntity = GsmConnection(351)
+
 
 def index(request):
     return render(request, 'IrrigationSystem/home.html', {"class_active" : "index"})
@@ -78,11 +114,10 @@ def SocketSend(request, function):
 
 
 	try:
-		if gsmConnectionEntity.isConnected:
+		if gsmConnectionEntity._isConnected:
 			activeConnection.sendall(message)
 		else:
 			content = {'content': [u'GSM is not connected']}
-			gsmConnectionEntity = None
 	except:
 		content = {'content': [u'Error occures while sending the message']}
 
@@ -116,7 +151,7 @@ def DataTransfer(request):
 		return HttpResponse(success)
 	else:
 	    return HttpResponse("Is not POST method")
-	
+
 
 def WindSpeedChartRender(request):
 	return render(request, 'IrrigationSystem/chart.html', {"endpoint": "windspeedchart", "legend_label": u"скорость, м/с"})
@@ -149,20 +184,20 @@ def SaveIP(request):
 	global gsmConnectionEntity
 	ip = get_ip(request)
 	if ip is not None:
-		gsmConnectionEntity = GsmConnection(351)
-		cThread = threading.Thread(target=gsmConnectionEntity.CheckConnection)
-		cThread.daemon = True
-		cThread.start()
+		if gsmConnectionEntity.listnerThread is None:
+			gsmConnectionEntity.StartListnerThread()
+
 		return HttpResponse("Thanks, is OK")
 	else:
 		return HttpResponse("Oops, something wrong")
 
 def ShowGSMIP(request):
 	global gsmConnectionEntity
-	try:
-		content = {'content':[gsmConnectionEntity.ip_addr[0]]}
-	except:
+
+	if gsmConnectionEntity._ip_addr is not None:
+		content = {'content':[gsmConnectionEntity._ip_addr]}
+	else:
 		content = {'content':[r'No connection']}
-	finally:
-		return render(request, 'IrrigationSystem/basic.html', content)
+
+	return render(request, 'IrrigationSystem/basic.html', content)
 
