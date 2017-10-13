@@ -103,10 +103,10 @@ def SocketSend(request, function):
 		activeConnection = gsmConnectionEntity.GetActiveConnection()
 
 		if function == "watering":
-			message = b'Start watering\0\r\n'
+			message = b'Start watering\1\r\1\n'
 			content = {'content': [u'Полив начанётся в течении одной минуты']}
 		elif function == "collectdata":
-			message = b'Start collecting data\0\r\n'
+			message = b'Start collecting data\1\r\1\n'
 			content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
 
 	except Exception as e:
