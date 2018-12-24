@@ -8,14 +8,19 @@ from ipware.ip import get_ip
 from ipaddress import ip_address
 from django.views.decorators.csrf import csrf_exempt
 import datetime
+import os
 import socket
 import json
 import threading
 
 
 def TCP_Listner(connectionEntity):
-	s = socket.socket()
-	s.bind(('', connectionEntity.port))
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		s.bind(('', connectionEntity.port))
+	except:
+		connectionEntity._activeConnection.shutdown(socket.SHUT_RD)
 	s.listen(1)
 	connectionEntity._activeConnection, (connectionEntity._ip_addr, wtf) = s.accept()
 
@@ -87,7 +92,7 @@ def weather(request, city = "Chisinau"):
 
 	weather_json = weatherlib.GetWeatherJSON(city)
 
-	return render(request, 'IrrigationSystem/weather.html', 
+	return render(request, 'IrrigationSystem/weather.html',
 				  {'city' : weather_json.GetCity(),
 				   'temperature': weather_json.GetTemperature(),
 				   'humidity': weather_json.GetHumidity(),
@@ -96,7 +101,7 @@ def weather(request, city = "Chisinau"):
 
 def SocketSend(request, function):
 	"""
-	Functionality for sending 
+	Functionality for sending
 	"""
 	global gsmConnectionEntity
 	try:
@@ -115,7 +120,9 @@ def SocketSend(request, function):
 
 	try:
 		if gsmConnectionEntity._isConnected:
-			activeConnection.sendall(message)
+			a = activeConnection.sendall(message)
+			if a:
+				print("No connection")
 		else:
 			content = {'content': [u'GSM is not connected']}
 	except:
