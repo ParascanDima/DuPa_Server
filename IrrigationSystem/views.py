@@ -5,7 +5,6 @@ from django.http import JsonResponse, HttpResponse
 from IrrigationSystem.weather import weatherlib
 from IrrigationSystem.models import Wind, MeasureTime, GroundHumidity, Custom_User
 from ipware.ip import get_ip
-from ipaddress import ip_address
 from django.views.decorators.csrf import csrf_exempt
 import datetime
 import os
@@ -13,6 +12,7 @@ import socket
 import json
 import threading
 
+subscribers = []
 
 def TCP_Listner(connectionEntity):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,12 +24,20 @@ def TCP_Listner(connectionEntity):
 	s.listen(1)
 	connectionEntity._activeConnection, (connectionEntity._ip_addr, wtf) = s.accept()
 
+	connectionEntity._activeConnection.settimeout(60.0)
 	connectionEntity._isConnected = True
 	connectionEntity.checkConnectionThread = threading.Thread(target=gsmConnectionEntity.CheckConnection)
 	connectionEntity.checkConnectionThread.daemon = True
 	connectionEntity.checkConnectionThread.start()
 	connectionEntity.listnerThread = None
 
+class GsmCommand(object):
+
+	def __init__(self):
+		self.isWateringStarted = False
+		self.isCollectingStarted = False
+		self.commandSendTime = datetime.datetime.now()
+		self.isActiveRequest = False
 
 class GsmConnection(object):
 	def __init__(self, port):
@@ -44,17 +52,28 @@ class GsmConnection(object):
 		return self._activeConnection
 
 	def CheckConnection(self):
+		global gsmStatus
 		while True:
 			if self._activeConnection is not None:
 				try:
 					data = self._activeConnection.recv(1024)
 					if not data:
-						self.CloseActiveConnection()
-
+						pass
+					elif "Collecting started" in data.decode("utf-8"):
+						gsmStatus.isCollectingStarted = True
+						gsmStatus.isActiveRequest = False
+					elif "Watering started" in data.decode("utf-8"):
+						gsmStatus.isCollectingStarted = True
+						gsmStatus.isActiveRequest = False
+					else:
+						print("WTF is going on?!")
 				except:
-					self.CloseActiveConnection()
+					if gsmStatus.isActiveRequest:
+						self.CloseActiveConnection()
+						gsmStatus.isActiveRequest = False
 			else:
 				self.CloseActiveConnection()
+				gsmStatus.isActiveRequest = False
 				break
 
 	def StartListnerThread(self):
@@ -73,7 +92,7 @@ class GsmConnection(object):
 		self.checkConnectionThread = None
 
 gsmConnectionEntity = GsmConnection(351)
-
+gsmStatus = GsmCommand()
 
 def index(request):
     return render(request, 'IrrigationSystem/home.html', {"class_active" : "index"})
@@ -114,15 +133,16 @@ def SocketSend(request, function):
 			message = b'Start collecting data\1\r\1\n'
 			content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
 
-	except Exception as e:
+	except Exception:
 		return render(request, 'IrrigationSystem/basic.html', {'content': [u'Ошибка подключения к системе полива']})
 
 
 	try:
 		if gsmConnectionEntity._isConnected:
-			a = activeConnection.sendall(message)
-			if a:
-				print("No connection")
+			status = activeConnection.sendall(message)
+			if not status:
+				gsmStatus.isActiveRequest = True
+				gsmStatus.commandSendTime = datetime.datetime.now()
 		else:
 			content = {'content': [u'GSM is not connected']}
 	except:
@@ -189,9 +209,12 @@ def groundhumiditychart(request):
 
 def SaveIP(request):
 	global gsmConnectionEntity
+	global subscribers
+
 	ip = get_ip(request)
 	if ip is not None:
 		if gsmConnectionEntity.listnerThread is None:
+			subscribers.append(ip)
 			gsmConnectionEntity.StartListnerThread()
 
 		return HttpResponse("Thanks, is OK")

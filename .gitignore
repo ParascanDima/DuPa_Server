@@ -1,4 +1,4 @@
+*.save*
+.vscode/
 *.pyc
-*.save
-
 *.swp
