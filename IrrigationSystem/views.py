@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.conf import settings
+from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
 from IrrigationSystem.weather import weatherlib
 from IrrigationSystem.models import Wind, MeasureTime, GroundHumidity, Custom_User
@@ -11,8 +13,9 @@ import os
 import socket
 import json
 import threading
+from webpush import send_user_notification
 
-subscribers = []
+user = None
 
 def TCP_Listner(connectionEntity):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,6 +56,7 @@ class GsmConnection(object):
 
 	def CheckConnection(self):
 		global gsmStatus
+		global user
 		while True:
 			if self._activeConnection is not None:
 				try:
@@ -62,9 +66,13 @@ class GsmConnection(object):
 					elif "Collecting started" in data.decode("utf-8"):
 						gsmStatus.isCollectingStarted = True
 						gsmStatus.isActiveRequest = False
+						payload = {'head': "Command result", 'body': "Collecting started"}
+						send_user_notification(user=user, payload=payload, ttl=1000)
 					elif "Watering started" in data.decode("utf-8"):
 						gsmStatus.isCollectingStarted = True
 						gsmStatus.isActiveRequest = False
+						payload = {'head': "Command result", 'body': "Watering started"}
+						send_user_notification(user=user, payload=payload, ttl=1000)
 					else:
 						print("WTF is going on?!")
 				except:
@@ -95,7 +103,11 @@ gsmConnectionEntity = GsmConnection(351)
 gsmStatus = GsmCommand()
 
 def index(request):
-    return render(request, 'IrrigationSystem/home.html', {"class_active" : "index"})
+	global user
+	webpush_settings = getattr(settings, 'WEBPUSH_SETTINGS', {})
+	vapid_key = webpush_settings.get('VAPID_PUBLIC_KEY')
+	user = request.user
+	return render(request, 'IrrigationSystem/home.html', {"class_active" : "index", "user" : user, "vapid_key" : vapid_key})
 
 
 def contact(request):

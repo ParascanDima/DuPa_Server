@@ -22,6 +22,11 @@
 	<link rel="icon" 
       type="image/png" 
       href="{% static 'img/utm.png' %}">
+
+      <meta name="vapid-key" content="{{ vapid_key }}">
+      {% if user.id %}
+         <meta name="user_id" content="{{ user.id }}">
+      {% endif %}
 </head>
 
 <body class="body" style="background-color: #f6f6f6">
@@ -106,5 +111,6 @@
              {% endblock %}
           })
         </script>
+        <script src="{% static '/js/registerSw.js' %}"></script>
 </body>
 </html>

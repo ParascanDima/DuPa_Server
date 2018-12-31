@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'ipware',
     'ipaddress',
+    'webpush',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -104,6 +105,13 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+
+WEBPUSH_SETTINGS = {
+   "VAPID_PUBLIC_KEY": "BMukNZADuv5VHDN_oSKlEV-9dEwyJEM21Uaegk5CtW51t4sM8KCMGRoHZod-j2QuYQo20yPu-52P8yLIC6mvlhA",
+   "VAPID_PRIVATE_KEY": "in9h12l5JW2k09CJ7hoRHktII5J6g5-Lo4EiHnIIWL8",
+   "VAPID_ADMIN_EMAIL": "parascan.dima94@gmail.com"
+}
 
 
 # Internationalization

@@ -20,4 +20,5 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include("IrrigationSystem.urls")),
+    url(r'^webpush/', include("webpush.urls")),
 ]
