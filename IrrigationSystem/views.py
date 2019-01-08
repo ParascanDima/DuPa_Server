@@ -16,6 +16,7 @@ import threading
 from webpush import send_user_notification
 
 user = None
+subscribers = []
 
 def TCP_Listner(connectionEntity):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,6 +73,11 @@ class GsmConnection(object):
 						gsmStatus.isCollectingStarted = True
 						gsmStatus.isActiveRequest = False
 						payload = {'head': "Command result", 'body': "Watering started"}
+						send_user_notification(user=user, payload=payload, ttl=1000)
+					elif "Watering stoped" in data.decode("utf-8"):
+						gsmStatus.isCollectingStarted = True
+						gsmStatus.isActiveRequest = False
+						payload = {'head': "Command result", 'body': "Watering stoped"}
 						send_user_notification(user=user, payload=payload, ttl=1000)
 					else:
 						print("WTF is going on?!")
@@ -138,12 +144,17 @@ def SocketSend(request, function):
 	try:
 		activeConnection = gsmConnectionEntity.GetActiveConnection()
 
-		if function == "watering":
-			message = b'Start watering\1\r\1\n'
-			content = {'content': [u'Полив начанётся в течении одной минуты']}
-		elif function == "collectdata":
-			message = b'Start collecting data\1\r\1\n'
-			content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
+		if "sendstop" in request.path:
+			if function == "watering":
+				message = b'Stop watering\1\r\1\n'
+				content = {'content': [u'Полив будет отключён в течении одной минуты']}
+		else:
+			if function == "watering":
+				message = b'Start watering\1\r\1\n'
+				content = {'content': [u'Полив начанётся в течении одной минуты']}
+			elif function == "collectdata":
+				message = b'Start collecting data\1\r\1\n'
+				content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
 
 	except Exception:
 		return render(request, 'IrrigationSystem/basic.html', {'content': [u'Ошибка подключения к системе полива']})
