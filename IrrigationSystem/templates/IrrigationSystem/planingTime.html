@@ -24,8 +24,7 @@ $("#planButton").on("click", function(event){
         dataType: "json",
         url: "/planeTime/",
         data: '{"start_time":"' + $("#start").val() + '","end_time":"' + $("#end").val() + '"}',
-        success: console.log("Запланировано"),
-        error: console.log("Error")
+        success: alert("Запланировано"),
     });
 })
 </script>

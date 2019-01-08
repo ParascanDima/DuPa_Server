@@ -222,7 +222,7 @@ def PlanedTime(request):
 		print("Starting at: " + json_data["start_time"])
 		print("Stoping at: " + json_data["end_time"])
 
-	return HttpResponse(success)
+	return render(request, 'IrrigationSystem/basic.html', {'content': [u'Полив начнётся в заданное время']})
 
 
 def WindSpeedChartRender(request):
