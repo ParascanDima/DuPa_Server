@@ -47,12 +47,13 @@ class GsmConnection(object):
 		self._isConnected = False
 		self.checkConnectionThread = None
 		self.listnerThread = None
+		self.commandStatus = GsmCommand()
 
 	def GetActiveConnection(self):
 		return self._activeConnection
 
 	def CheckConnection(self):
-		global gsmStatus
+
 		while True:
 			if self._activeConnection is not None:
 				try:
@@ -60,20 +61,28 @@ class GsmConnection(object):
 					if not data:
 						pass
 					elif "Collecting started" in data.decode("utf-8"):
-						gsmStatus.isCollectingStarted = True
-						gsmStatus.isActiveRequest = False
+						print("Collecting started")
+						self.commandStatus.isCollectingStarted = True
+						self.commandStatus.isActiveRequest = False
 					elif "Watering started" in data.decode("utf-8"):
-						gsmStatus.isCollectingStarted = True
-						gsmStatus.isActiveRequest = False
+						print("Watering started")
+						self.commandStatus.isWateringStarted = True
+						self.commandStatus.isActiveRequest = False
+					elif "Watering stoped" in data.decode("utf-8"):
+						print("Watering stoped")
+						self.commandStatus.isWateringStarted = False
+						self.commandStatus.isActiveRequest = False
 					else:
 						print("WTF is going on?!")
 				except:
-					if gsmStatus.isActiveRequest:
+					if self.commandStatus.isActiveRequest:
 						self.CloseActiveConnection()
-						gsmStatus.isActiveRequest = False
+						self.commandStatus.isCollectingStarted = self.commandStatus.isWateringStarted = False
+						self.commandStatus.isActiveRequest = False
 			else:
 				self.CloseActiveConnection()
-				gsmStatus.isActiveRequest = False
+				self.commandStatus.isCollectingStarted = self.commandStatus.isWateringStarted = False
+				self.commandStatus.isActiveRequest = False
 				break
 
 	def StartListnerThread(self):
@@ -92,7 +101,6 @@ class GsmConnection(object):
 		self.checkConnectionThread = None
 
 gsmConnectionEntity = GsmConnection(351)
-gsmStatus = GsmCommand()
 
 def index(request):
     return render(request, 'IrrigationSystem/home.html', {"class_active" : "index"})
@@ -118,6 +126,9 @@ def weather(request, city = "Chisinau"):
 				   'wind_speed': weather_json.GetWindSpeed(),
 				   'wind_direction': weather_json.GetWindDirection(),})
 
+def PlaneAction(request, function):
+    return render(request, 'IrrigationSystem/planingTime.html', {"class_active" : "index"})
+
 def SocketSend(request, function):
 	"""
 	Functionality for sending
@@ -125,13 +136,31 @@ def SocketSend(request, function):
 	global gsmConnectionEntity
 	try:
 		activeConnection = gsmConnectionEntity.GetActiveConnection()
+		if "sendstop" in request.path:
+			if function == "watering":
+				if gsmConnectionEntity.commandStatus.isWateringStarted is not False:
+					message = b'Stop watering\1\r\1\n'
+					content = {'content': [u'Полив будет отключён в течении одной минуты']}
+				else:
+					message = u''
+					content = {'content': [u'Полив уже отключен']}
+		else:
+			if function == "watering":
+				if gsmConnectionEntity.commandStatus.isWateringStarted is False:
+					message = b'Start watering\1\r\1\n'
+					content = {'content': [u'Полив начанётся в течении одной минуты']}
+				else:
+					message = u''
+					content = {'content': [u'Полив уже включен']}
 
-		if function == "watering":
-			message = b'Start watering\1\r\1\n'
-			content = {'content': [u'Полив начанётся в течении одной минуты']}
-		elif function == "collectdata":
-			message = b'Start collecting data\1\r\1\n'
-			content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
+			elif function == "collectdata":
+				if gsmConnectionEntity.commandStatus.isCollectingStarted is False:
+					message = b'Start collecting data\1\r\1\n'
+					content = {'content': [u'Сбор данных начанётся в течении одной минуты']}
+				else:
+					message = u''
+					content = {'content': [u'Команда на сбор данных уже была отправлена, дождитесь ответа после чего можете попробовать ещё раз']}
+
 
 	except Exception:
 		return render(request, 'IrrigationSystem/basic.html', {'content': [u'Ошибка подключения к системе полива']})
@@ -139,10 +168,13 @@ def SocketSend(request, function):
 
 	try:
 		if gsmConnectionEntity._isConnected:
-			status = activeConnection.sendall(message)
-			if not status:
-				gsmStatus.isActiveRequest = True
-				gsmStatus.commandSendTime = datetime.datetime.now()
+			if message != '':
+				status = activeConnection.sendall(message)
+				if not status:
+					gsmConnectionEntity.commandStatus.isActiveRequest = True
+					gsmConnectionEntity.commandStatus.commandSendTime = datetime.datetime.now()
+			else:
+				pass
 		else:
 			content = {'content': [u'GSM is not connected']}
 	except:
@@ -178,6 +210,19 @@ def DataTransfer(request):
 		return HttpResponse(success)
 	else:
 	    return HttpResponse("Is not POST method")
+
+
+@csrf_exempt
+def PlanedTime(request):
+	success = "Success"
+	failed  = "Failed"
+	if request.method == 'POST':
+		json_string = "".join(map(chr, request.body))
+		json_data = json.loads(json_string)
+		print("Starting at: " + json_data["start_time"])
+		print("Stoping at: " + json_data["end_time"])
+
+	return HttpResponse(success)
 
 
 def WindSpeedChartRender(request):

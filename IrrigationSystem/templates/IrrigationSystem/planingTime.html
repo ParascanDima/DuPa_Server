@@ -1,0 +1,52 @@
+{% extends "IrrigationSystem/header.html" %}
+
+{% block head %}
+<link href="/static/css/bootstrap-datetimepicker.min.css" rel="stylesheet" media="screen">
+{% endblock %}
+
+{% block footer %}
+<script src="/static/js/bootstrap-datetimepicker.min.js"></script>
+<script type="text/javascript" src="/static/js/locales/bootstrap-datetimepicker.fr.js" charset="UTF-8"></script>
+<script type="text/javascript">
+    $(".form_datetime").datetimepicker({
+        format: "dd MM yyyy - hh:ii",
+        autoclose: true,
+        todayBtn: true,
+        startDate: "2019-01-01 10:00",
+        minuteStep: 1
+    });
+</script>  
+<script type="text/javascript">
+$("#planButton").on("click", function(event){
+    $.ajax({
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        url: "/planeTime/",
+        data: '{"start_time":"' + $("#start").val() + '","end_time":"' + $("#end").val() + '"}',
+        success: console.log("Запланировано"),
+        error: console.log("Error")
+    });
+})
+</script>
+{% endblock %}
+
+
+{% block content %}
+<div class="form-group">
+    <h3><label for="dtp_input1" class="label label-default">Начало полива</label></h3>
+    <div class="input-group date form_datetime col-md-5" data-date="1979-09-16T05:25:07Z" data-date-format="dd MM yyyy - HH:ii p" data-link-field="dtp_input1">
+    <input class="form-control" id="start" size="16" type="text" value="" readonly>
+    <span class="input-group-addon"><span class="glyphicon glyphicon-remove"></span></span>
+	<span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span></span>
+    </div>
+    <h3><label for="dtp_input2" class="label label-default">Конец полива</label></h3>
+    <div class="input-group date form_datetime col-md-5" data-date="1979-09-16T05:25:07Z" data-date-format="dd MM yyyy - HH:ii p" data-link-field="dtp_input2">
+    <input class="form-control" id="end" size="16" type="text" value="" readonly>
+    <span class="input-group-addon"><span class="glyphicon glyphicon-remove"></span></span>
+	<span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span></span>
+    </div>
+	
+</div>
+<button type="button" class="btn btn-success col-md-1 col-md-offset-5" id="planButton">Готово</button>
+{% endblock %}
