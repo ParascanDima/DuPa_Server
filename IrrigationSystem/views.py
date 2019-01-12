@@ -17,10 +17,16 @@ timeViewThread = None
 
 
 def StartFuntion():
-	print("started")
+	global gsmConnectionEntity
+	activeConnection = gsmConnectionEntity.GetActiveConnection()
+	if gsmConnectionEntity._isConnected:
+		activeConnection.sendall(b'Start watering\1\r\1\n')
 
 def EndFuntion():
-	print("stopped")
+	global gsmConnectionEntity
+	activeConnection = gsmConnectionEntity.GetActiveConnection()
+	if gsmConnectionEntity._isConnected:
+		activeConnection.sendall(b'Stop watering\1\r\1\n')
 
 def CheckTime(startTime=None, endTime=None, startFunc=None, endFunc=None):
 	while True:
