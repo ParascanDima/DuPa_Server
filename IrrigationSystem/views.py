@@ -194,7 +194,7 @@ def DataTransfer(request):
 		json_data = json.loads(json_string)
 		try:
 			wind_speed = Wind(speed = json_data["Wind_speed"])
-			humidity = GroundHumidity(sensor = json_data["humidity"], averange=json_data["humidity"])
+			humidity = GroundHumidity(sensor = json_data["Humidity"], averange=json_data["Humidity"])
 			measure_time = MeasureTime(date = datetime.datetime.now())
 			measure_time.save()
 			wind_speed.date = measure_time
