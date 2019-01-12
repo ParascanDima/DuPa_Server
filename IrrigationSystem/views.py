@@ -13,7 +13,26 @@ import json
 import threading
 
 subscribers = []
+timeViewThread = None
 
+
+def StartFuntion():
+	print("started")
+
+def EndFuntion():
+	print("stopped")
+
+def CheckTime(startTime=None, endTime=None, startFunc=None, endFunc=None):
+	while True:
+		if startTime < datetime.datetime.now():
+			break
+	startFunc()
+
+	while True:
+		if endTime < datetime.datetime.now():
+			break
+	endFunc()
+	
 def TCP_Listner(connectionEntity):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -214,13 +233,17 @@ def DataTransfer(request):
 
 @csrf_exempt
 def PlanedTime(request):
+	global timeViewThread
 	success = "Success"
 	failed  = "Failed"
 	if request.method == 'POST':
 		json_string = "".join(map(chr, request.body))
 		json_data = json.loads(json_string)
-		print("Starting at: " + json_data["start_time"])
-		print("Stoping at: " + json_data["end_time"])
+		planedStart = datetime.datetime.strptime(json_data["start_time"], "%d %B %Y %H:%M:%S")
+		planedStop = datetime.datetime.strptime(json_data["end_time"], "%d %B %Y %H:%M:%S")
+		timeViewThread = threading.Thread(target=CheckTime, kwargs={"startTime":planedStart, "endTime":planedStop, "startFunc":StartFuntion, "endFunc":EndFuntion})
+		timeViewThread.daemon = True
+		timeViewThread.start()
 
 	return render(request, 'IrrigationSystem/basic.html', {'content': [u'Полив начнётся в заданное время']})
 
