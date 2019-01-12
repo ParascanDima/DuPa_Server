@@ -68,8 +68,8 @@ class GsmConnection(object):
 						print("Watering started")
 						self.commandStatus.isWateringStarted = True
 						self.commandStatus.isActiveRequest = False
-					elif "Watering stoped" in data.decode("utf-8"):
-						print("Watering stoped")
+					elif "Watering stopped" in data.decode("utf-8"):
+						print("Watering stopped")
 						self.commandStatus.isWateringStarted = False
 						self.commandStatus.isActiveRequest = False
 					else:
